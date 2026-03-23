@@ -86,11 +86,13 @@ export function buildPlayerRoundSummary(
 ): PlayerRoundSummary {
   let totalStrokes = 0;
   let totalStableford = 0;
+  let totalWolfPoints = 0;
   let holesPlayed = 0;
   let hasNullStrokes = false;
 
   const holes: PlayerHoleSummary[] = course.holes.map((holeConfig, idx) => {
     const strokes = round.scores[idx]?.strokes ?? null;
+    const wolfPoints = round.scores[idx]?.wolfPoints ?? null;
     const extraStrokes = handicapInfo.extraStrokes[idx] ?? 0;
     const netStrokes = strokes !== null ? strokes - extraStrokes : null;
     const points =
@@ -106,6 +108,10 @@ export function buildPlayerRoundSummary(
       hasNullStrokes = true;
     }
 
+    if (wolfPoints !== null) {
+      totalWolfPoints += wolfPoints;
+    }
+
     return {
       hole: holeConfig.hole,
       par: holeConfig.par,
@@ -114,6 +120,7 @@ export function buildPlayerRoundSummary(
       extraStrokes,
       netStrokes,
       stablefordPoints: points,
+      wolfPoints,
     };
   });
 
@@ -123,6 +130,7 @@ export function buildPlayerRoundSummary(
     holes,
     totalStrokes: hasNullStrokes && holesPlayed === 0 ? null : totalStrokes,
     totalStableford,
+    totalWolfPoints,
     holesPlayed,
   };
 }

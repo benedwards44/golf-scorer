@@ -118,7 +118,7 @@ export default function NewGameScreen() {
       players: validPlayers,
       rounds: validPlayers.map((p) => ({
         playerId: p.id,
-        scores: Array.from({ length: 18 }, () => ({ strokes: null })),
+        scores: Array.from({ length: 18 }, () => ({ strokes: null, wolfPoints: null })),
       })),
       completed: false,
     };

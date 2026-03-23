@@ -21,7 +21,8 @@ export interface CourseConfig {
 }
 
 export interface HoleScore {
-  strokes: number | null; // null = not yet entered
+  strokes: number | null;    // null = not yet entered
+  wolfPoints: number | null; // manually entered Wolf points, null = not entered
 }
 
 export interface PlayerRound {
@@ -53,6 +54,7 @@ export interface PlayerHoleSummary {
   extraStrokes: number;
   netStrokes: number | null;
   stablefordPoints: number | null;
+  wolfPoints: number | null;
 }
 
 export interface PlayerRoundSummary {
@@ -61,5 +63,6 @@ export interface PlayerRoundSummary {
   holes: PlayerHoleSummary[];
   totalStrokes: number | null;
   totalStableford: number;
+  totalWolfPoints: number;
   holesPlayed: number;
 }

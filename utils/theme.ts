@@ -32,6 +32,10 @@ export const Colors = {
   // Stableford
   stableford: '#7c3aed',
   stablefordLight: '#ede9fe',
+
+  // Wolf
+  wolf: '#b45309',
+  wolfLight: '#fef3c7',
 };
 
 export const Spacing = {

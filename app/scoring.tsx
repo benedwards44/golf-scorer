@@ -3,10 +3,14 @@ import {
   Alert,
   Dimensions,
   FlatList,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
@@ -25,6 +29,8 @@ export default function ScoringScreen() {
   const [currentHole, setCurrentHole] = useState(0); // 0-indexed
   const [summaries, setSummaries] = useState<PlayerRoundSummary[]>([]);
   const [view, setView] = useState<'scoring' | 'leaderboard'>('scoring');
+  const [editingPlayers, setEditingPlayers] = useState(false);
+  const [playerDrafts, setPlayerDrafts] = useState<{ name: string; handicap: string }[]>([]);
   const flatListRef = useRef<FlatList>(null);
 
   useFocusEffect(
@@ -51,13 +57,29 @@ export default function ScoringScreen() {
       rounds: game.rounds.map((r) => {
         if (r.playerId !== playerId) return r;
         const scores = [...r.scores];
-        scores[holeIdx] = { strokes };
+        scores[holeIdx] = { ...scores[holeIdx], strokes };
         return { ...r, scores };
       }),
     };
     // Check if complete
     const allDone = updated.rounds.every((r) => r.scores.every((s) => s.strokes !== null));
     updated.completed = allDone;
+    setGame(updated);
+    setSummaries(buildGameSummaries(updated));
+    await saveGame(updated);
+  }
+
+  async function updateWolfPoints(playerId: string, holeIdx: number, wolfPoints: number | null) {
+    if (!game) return;
+    const updated: Game = {
+      ...game,
+      rounds: game.rounds.map((r) => {
+        if (r.playerId !== playerId) return r;
+        const scores = [...r.scores];
+        scores[holeIdx] = { ...scores[holeIdx], wolfPoints };
+        return { ...r, scores };
+      }),
+    };
     setGame(updated);
     setSummaries(buildGameSummaries(updated));
     await saveGame(updated);
@@ -70,7 +92,7 @@ export default function ScoringScreen() {
       rounds: game.rounds.map((r) => {
         if (r.playerId !== playerId) return r;
         const scores = [...r.scores];
-        scores[holeIdx] = { strokes: null };
+        scores[holeIdx] = { strokes: null, wolfPoints: scores[holeIdx].wolfPoints ?? null };
         return { ...r, scores };
       }),
       completed: false,
@@ -83,6 +105,41 @@ export default function ScoringScreen() {
   function goToHole(idx: number) {
     setCurrentHole(idx);
     flatListRef.current?.scrollToIndex({ index: idx, animated: true });
+  }
+
+  function openEditPlayers() {
+    if (!game) return;
+    setPlayerDrafts(
+      game.players.map((p) => ({ name: p.name, handicap: String(p.handicap) }))
+    );
+    setEditingPlayers(true);
+  }
+
+  async function saveEditedPlayers() {
+    if (!game) return;
+    for (const d of playerDrafts) {
+      if (!d.name.trim()) {
+        Alert.alert('Missing Name', 'All players must have a name.');
+        return;
+      }
+      const hcp = parseFloat(d.handicap);
+      if (isNaN(hcp) || hcp < -10 || hcp > 54) {
+        Alert.alert('Invalid Handicap', `Handicap for "${d.name}" must be between -10 and 54.`);
+        return;
+      }
+    }
+    const updated: Game = {
+      ...game,
+      players: game.players.map((p, idx) => ({
+        ...p,
+        name: playerDrafts[idx].name.trim(),
+        handicap: parseFloat(playerDrafts[idx].handicap) || 0,
+      })),
+    };
+    setGame(updated);
+    setSummaries(buildGameSummaries(updated));
+    await saveGame(updated);
+    setEditingPlayers(false);
   }
 
   if (!game) {
@@ -99,6 +156,7 @@ export default function ScoringScreen() {
     extraStrokes: s.holes[currentHole].extraStrokes,
     strokes: s.holes[currentHole].strokes,
     stableford: s.holes[currentHole].stablefordPoints,
+    wolfPoints: s.holes[currentHole].wolfPoints,
   }));
 
   return (
@@ -108,6 +166,12 @@ export default function ScoringScreen() {
           title: game.course.name,
           headerRight: () => (
             <View style={{ flexDirection: 'row', gap: 8 }}>
+              <Pressable
+                onPress={openEditPlayers}
+                style={{ paddingHorizontal: 4 }}
+              >
+                <Ionicons name="people-outline" size={24} color={Colors.white} />
+              </Pressable>
               <Pressable
                 onPress={() => router.push({ pathname: '/hole-setup', params: { gameId: game.id } })}
                 style={{ paddingHorizontal: 4 }}
@@ -215,10 +279,19 @@ export default function ScoringScreen() {
                       <View style={styles.totalDivider} />
                       <View style={styles.totalItem}>
                         <Text style={[styles.totalLabel, { color: Colors.stableford }]}>
-                          Stableford
+                          Stabies
                         </Text>
                         <Text style={[styles.totalValue, { color: Colors.stableford }]}>
                           {summary.holesPlayed > 0 ? summary.totalStableford : '—'}
+                        </Text>
+                      </View>
+                      <View style={styles.totalDivider} />
+                      <View style={styles.totalItem}>
+                        <Text style={[styles.totalLabel, { color: Colors.wolf }]}>
+                          🐺 Wolf
+                        </Text>
+                        <Text style={[styles.totalValue, { color: Colors.wolf }]}>
+                          {summary.totalWolfPoints > 0 ? summary.totalWolfPoints : '—'}
                         </Text>
                       </View>
                     </View>
@@ -305,6 +378,49 @@ export default function ScoringScreen() {
                       )
                     )}
                   </View>
+
+                  {/* Wolf points row */}
+                  <View style={styles.wolfRow}>
+                    <Text style={styles.wolfLabel}>🐺 Wolf Points</Text>
+                    <View style={styles.wolfStepper}>
+                      <Pressable
+                        style={styles.wolfStepBtn}
+                        onPress={() => {
+                          const cur = holeData.wolfPoints ?? 0;
+                          if (cur > 0) updateWolfPoints(summary.player.id, currentHole, cur - 1);
+                          else updateWolfPoints(summary.player.id, currentHole, null);
+                        }}
+                      >
+                        <Text style={styles.wolfStepText}>−</Text>
+                      </Pressable>
+                      <TextInput
+                        style={styles.wolfInput}
+                        keyboardType="number-pad"
+                        value={holeData.wolfPoints !== null ? String(holeData.wolfPoints) : ''}
+                        placeholder="—"
+                        placeholderTextColor={Colors.textMuted}
+                        onChangeText={(v) => {
+                          if (v === '' || v === '-') {
+                            updateWolfPoints(summary.player.id, currentHole, null);
+                          } else {
+                            const n = parseInt(v);
+                            if (!isNaN(n) && n >= 0) updateWolfPoints(summary.player.id, currentHole, n);
+                          }
+                        }}
+                        selectTextOnFocus
+                        returnKeyType="done"
+                      />
+                      <Pressable
+                        style={styles.wolfStepBtn}
+                        onPress={() => {
+                          const cur = holeData.wolfPoints ?? 0;
+                          updateWolfPoints(summary.player.id, currentHole, cur + 1);
+                        }}
+                      >
+                        <Text style={styles.wolfStepText}>+</Text>
+                      </Pressable>
+                    </View>
+                  </View>
                 </View>
               );
             })}
@@ -351,6 +467,71 @@ export default function ScoringScreen() {
           onHolePress={(holeIdx) => { setCurrentHole(holeIdx); setView('scoring'); }}
         />
       )}
+
+      {/* ── Edit Players Modal ── */}
+      <Modal
+        visible={editingPlayers}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setEditingPlayers(false)}
+      >
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          <View style={editStyles.header}>
+            <Pressable onPress={() => setEditingPlayers(false)} style={editStyles.cancelBtn}>
+              <Text style={editStyles.cancelText}>Cancel</Text>
+            </Pressable>
+            <Text style={editStyles.title}>Edit Players</Text>
+            <Pressable onPress={saveEditedPlayers} style={editStyles.saveBtn}>
+              <Text style={editStyles.saveText}>Save</Text>
+            </Pressable>
+          </View>
+
+          <ScrollView contentContainerStyle={editStyles.scroll} keyboardShouldPersistTaps="handled">
+            <Text style={editStyles.hint}>
+              Changes to handicap will recalculate Stableford points for all holes.
+            </Text>
+            {playerDrafts.map((draft, idx) => (
+              <View key={idx} style={editStyles.playerRow}>
+                <View style={editStyles.playerNum}>
+                  <Text style={editStyles.playerNumText}>{idx + 1}</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={editStyles.fieldLabel}>Name</Text>
+                  <TextInput
+                    style={editStyles.input}
+                    value={draft.name}
+                    onChangeText={(v) =>
+                      setPlayerDrafts((prev) =>
+                        prev.map((d, i) => (i === idx ? { ...d, name: v } : d))
+                      )
+                    }
+                    placeholder={`Player ${idx + 1}`}
+                    returnKeyType="next"
+                  />
+                </View>
+                <View style={editStyles.handicapCol}>
+                  <Text style={editStyles.fieldLabel}>HCP</Text>
+                  <TextInput
+                    style={[editStyles.input, editStyles.handicapInput]}
+                    value={draft.handicap}
+                    onChangeText={(v) =>
+                      setPlayerDrafts((prev) =>
+                        prev.map((d, i) => (i === idx ? { ...d, handicap: v } : d))
+                      )
+                    }
+                    keyboardType="numbers-and-punctuation"
+                    returnKeyType="done"
+                    selectTextOnFocus
+                  />
+                </View>
+              </View>
+            ))}
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </Modal>
     </>
   );
 }
@@ -368,37 +549,10 @@ function LeaderboardView({
   onBack: () => void;
   onHolePress: (holeIdx: number) => void;
 }) {
-  const [tab, setTab] = useState<'stableford' | 'strokes'>('stableford');
-
-  const sorted = [...summaries].sort((a, b) => {
-    if (tab === 'stableford') return b.totalStableford - a.totalStableford;
-    const aS = a.totalStrokes ?? 9999;
-    const bS = b.totalStrokes ?? 9999;
-    return aS - bS;
-  });
+  const sorted = [...summaries].sort((a, b) => b.totalStableford - a.totalStableford);
 
   return (
     <View style={{ flex: 1 }}>
-      {/* Tab switcher */}
-      <View style={lbStyles.tabs}>
-        <Pressable
-          style={[lbStyles.tab, tab === 'stableford' && lbStyles.tabActive]}
-          onPress={() => setTab('stableford')}
-        >
-          <Text style={[lbStyles.tabText, tab === 'stableford' && lbStyles.tabTextActive]}>
-            Stableford
-          </Text>
-        </Pressable>
-        <Pressable
-          style={[lbStyles.tab, tab === 'strokes' && lbStyles.tabActive]}
-          onPress={() => setTab('strokes')}
-        >
-          <Text style={[lbStyles.tabText, tab === 'strokes' && lbStyles.tabTextActive]}>
-            Strokes
-          </Text>
-        </Pressable>
-      </View>
-
       <ScrollView contentContainerStyle={lbStyles.list}>
         {/* Player rankings */}
         <Text style={lbStyles.sectionHeading}>Rankings</Text>
@@ -424,10 +578,18 @@ function LeaderboardView({
               </View>
               <View style={[lbStyles.scoreCol, lbStyles.stablefordCol]}>
                 <Text style={[lbStyles.scoreLabel, { color: Colors.stableford }]}>
-                  Stableford
+                  Stabies
                 </Text>
                 <Text style={[lbStyles.scoreVal, { color: Colors.stableford }]}>
                   {s.holesPlayed > 0 ? s.totalStableford : '—'}
+                </Text>
+              </View>
+              <View style={[lbStyles.scoreCol, lbStyles.stablefordCol]}>
+                <Text style={[lbStyles.scoreLabel, { color: Colors.wolf }]}>
+                  🐺 Wolf
+                </Text>
+                <Text style={[lbStyles.scoreVal, { color: Colors.wolf }]}>
+                  {s.totalWolfPoints > 0 ? s.totalWolfPoints : '—'}
                 </Text>
               </View>
             </View>
@@ -438,13 +600,11 @@ function LeaderboardView({
         <Text style={[lbStyles.sectionHeading, { marginTop: Spacing.xl }]}>
           Scorecard
         </Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <View>
             {/* Header row */}
             <View style={lbStyles.gridRow}>
-              <View style={lbStyles.gridPlayerCell}>
-                <Text style={lbStyles.gridHeader}>Player</Text>
-              </View>
+              <View style={lbStyles.gridLabelCell} />
               {course.holes.map((h: any) => (
                 <Pressable
                   key={h.hole}
@@ -458,40 +618,73 @@ function LeaderboardView({
               <View style={lbStyles.gridTotalCell}>
                 <Text style={lbStyles.gridHeader}>Tot</Text>
               </View>
-              <View style={lbStyles.gridTotalCell}>
-                <Text style={[lbStyles.gridHeader, { color: Colors.stableford }]}>Stb</Text>
-              </View>
             </View>
 
-            {/* Player rows */}
-            {summaries.map((s) => (
-              <View key={s.player.id} style={lbStyles.gridRow}>
-                <View style={lbStyles.gridPlayerCell}>
+            {/* One group of 3 rows per player */}
+            {summaries.map((s, playerIdx) => (
+              <View key={s.player.id} style={playerIdx > 0 ? lbStyles.playerGroup : undefined}>
+                {/* Player name spanning row */}
+                <View style={lbStyles.gridNameRow}>
                   <Text style={lbStyles.gridPlayerName} numberOfLines={1}>
                     {s.player.name}
                   </Text>
                 </View>
-                {s.holes.map((h) => (
-                  <View key={h.hole} style={lbStyles.gridHoleCell}>
-                    <Text
-                      style={[
-                        lbStyles.gridScore,
-                        { color: getScoreColor(h.strokes, h.par) },
-                      ]}
-                    >
-                      {h.strokes ?? '·'}
+
+                {/* Strokes row */}
+                <View style={lbStyles.gridRow}>
+                  <View style={lbStyles.gridLabelCell}>
+                    <Text style={lbStyles.gridRowLabel}>Stk</Text>
+                  </View>
+                  {s.holes.map((h) => (
+                    <View key={h.hole} style={lbStyles.gridHoleCell}>
+                      <Text style={[lbStyles.gridScore, { color: getScoreColor(h.strokes, h.par) }]}>
+                        {h.strokes ?? '·'}
+                      </Text>
+                    </View>
+                  ))}
+                  <View style={lbStyles.gridTotalCell}>
+                    <Text style={lbStyles.gridTotalScore}>
+                      {s.holesPlayed > 0 ? s.totalStrokes : '—'}
                     </Text>
                   </View>
-                ))}
-                <View style={lbStyles.gridTotalCell}>
-                  <Text style={lbStyles.gridTotalScore}>
-                    {s.holesPlayed > 0 ? s.totalStrokes : '—'}
-                  </Text>
                 </View>
-                <View style={lbStyles.gridTotalCell}>
-                  <Text style={[lbStyles.gridTotalScore, { color: Colors.stableford }]}>
-                    {s.holesPlayed > 0 ? s.totalStableford : '—'}
-                  </Text>
+
+                {/* Stableford row */}
+                <View style={lbStyles.gridRow}>
+                  <View style={lbStyles.gridLabelCell}>
+                    <Text style={[lbStyles.gridRowLabel, { color: Colors.stableford }]}>Stb</Text>
+                  </View>
+                  {s.holes.map((h) => (
+                    <View key={h.hole} style={lbStyles.gridHoleCell}>
+                      <Text style={[lbStyles.gridScore, { color: Colors.stableford }]}>
+                        {h.stablefordPoints !== null ? h.stablefordPoints : '·'}
+                      </Text>
+                    </View>
+                  ))}
+                  <View style={lbStyles.gridTotalCell}>
+                    <Text style={[lbStyles.gridTotalScore, { color: Colors.stableford }]}>
+                      {s.holesPlayed > 0 ? s.totalStableford : '—'}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Wolf row */}
+                <View style={lbStyles.gridRow}>
+                  <View style={lbStyles.gridLabelCell}>
+                    <Text style={[lbStyles.gridRowLabel, { color: Colors.wolf }]}>Wlf</Text>
+                  </View>
+                  {s.holes.map((h) => (
+                    <View key={h.hole} style={lbStyles.gridHoleCell}>
+                      <Text style={[lbStyles.gridScore, { color: Colors.wolf }]}>
+                        {h.wolfPoints !== null ? h.wolfPoints : '·'}
+                      </Text>
+                    </View>
+                  ))}
+                  <View style={lbStyles.gridTotalCell}>
+                    <Text style={[lbStyles.gridTotalScore, { color: Colors.wolf }]}>
+                      {s.totalWolfPoints > 0 ? s.totalWolfPoints : '—'}
+                    </Text>
+                  </View>
                 </View>
               </View>
             ))}
@@ -503,22 +696,6 @@ function LeaderboardView({
 }
 
 const lbStyles = StyleSheet.create({
-  tabs: {
-    flexDirection: 'row',
-    backgroundColor: Colors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: Spacing.md,
-    alignItems: 'center',
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
-  },
-  tabActive: { borderBottomColor: Colors.green },
-  tabText: { fontSize: FontSize.base, color: Colors.textSecondary, fontWeight: '600' },
-  tabTextActive: { color: Colors.green },
   list: { padding: Spacing.base, paddingBottom: 48 },
   sectionHeading: {
     fontSize: FontSize.sm,
@@ -565,21 +742,40 @@ const lbStyles = StyleSheet.create({
   scoreVal: { fontSize: FontSize.md, fontWeight: '700', color: Colors.textPrimary },
   // Grid
   gridRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: Colors.border },
-  gridPlayerCell: {
-    width: 90,
-    padding: Spacing.sm,
+  gridNameRow: {
+    paddingHorizontal: Spacing.sm,
+    paddingTop: Spacing.sm,
+    paddingBottom: 2,
+    backgroundColor: Colors.offWhite,
+  },
+  gridPlayerName: { fontSize: FontSize.xs, fontWeight: '700', color: Colors.textPrimary },
+  playerGroup: {
+    borderTopWidth: 2,
+    borderTopColor: Colors.borderDark,
+  },
+  gridLabelCell: {
+    width: 38,
+    paddingHorizontal: 4,
+    paddingVertical: 5,
     backgroundColor: Colors.offWhite,
     justifyContent: 'center',
   },
+  gridRowLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: Colors.textSecondary,
+    textTransform: 'uppercase',
+  },
   gridHoleCell: {
     width: 36,
-    padding: 4,
+    paddingVertical: 5,
     alignItems: 'center',
     justifyContent: 'center',
   },
   gridTotalCell: {
     width: 42,
-    padding: Spacing.sm,
+    paddingVertical: 5,
+    paddingHorizontal: Spacing.sm,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: Colors.offWhite,
@@ -732,4 +928,119 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.full,
   },
   leaderboardNavText: { color: Colors.white, fontWeight: '700', fontSize: FontSize.sm },
+  wolfRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: Spacing.md,
+    paddingTop: Spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+  },
+  wolfLabel: {
+    fontSize: FontSize.sm,
+    fontWeight: '600',
+    color: Colors.textSecondary,
+  },
+  wolfStepper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  wolfStepBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: Colors.borderDark,
+    backgroundColor: Colors.offWhite,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  wolfStepText: { fontSize: FontSize.md, color: Colors.textPrimary, lineHeight: 22 },
+  wolfInput: {
+    width: 52,
+    height: 36,
+    borderWidth: 1,
+    borderColor: Colors.borderDark,
+    borderRadius: BorderRadius.md,
+    textAlign: 'center',
+    fontSize: FontSize.md,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+    backgroundColor: Colors.offWhite,
+  },
+});
+
+const editStyles = StyleSheet.create({
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.base,
+    paddingVertical: Spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+    backgroundColor: Colors.white,
+  },
+  title: {
+    fontSize: FontSize.md,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+  },
+  cancelBtn: { paddingVertical: 4, paddingHorizontal: 4 },
+  cancelText: { fontSize: FontSize.base, color: Colors.textSecondary },
+  saveBtn: { paddingVertical: 4, paddingHorizontal: 4 },
+  saveText: { fontSize: FontSize.base, fontWeight: '700', color: Colors.green },
+  hint: {
+    fontSize: FontSize.sm,
+    color: Colors.info,
+    backgroundColor: Colors.infoLight,
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+    marginBottom: Spacing.base,
+  },
+  scroll: {
+    padding: Spacing.base,
+    paddingBottom: 48,
+  },
+  playerRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: Spacing.sm,
+    marginBottom: Spacing.md,
+    backgroundColor: Colors.white,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  playerNum: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: Colors.greenMuted,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 2,
+  },
+  playerNumText: { fontSize: FontSize.sm, fontWeight: '700', color: Colors.green },
+  fieldLabel: {
+    fontSize: FontSize.xs,
+    fontWeight: '600',
+    color: Colors.textSecondary,
+    marginBottom: 4,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: Colors.borderDark,
+    borderRadius: BorderRadius.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Platform.OS === 'ios' ? 10 : 8,
+    fontSize: FontSize.base,
+    color: Colors.textPrimary,
+    backgroundColor: Colors.offWhite,
+  },
+  handicapCol: { width: 68 },
+  handicapInput: { textAlign: 'center' },
 });
