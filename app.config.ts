@@ -18,7 +18,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     backgroundColor: '#1a5c38',
   },
   ios: {
-    supportsTablet: false,
+    supportsTablet: true,
     bundleIdentifier: 'com.golfscorer.app',
     infoPlist: {
       ITSAppUsesNonExemptEncryption: false

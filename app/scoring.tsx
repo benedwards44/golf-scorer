@@ -613,6 +613,7 @@ function LeaderboardView({
                 >
                   <Text style={lbStyles.gridHeader}>{h.hole}</Text>
                   <Text style={lbStyles.gridParText}>p{h.par}</Text>
+                  <Text style={lbStyles.gridSiText}>s{h.strokeIndex}</Text>
                 </Pressable>
               ))}
               <View style={lbStyles.gridTotalCell}>
@@ -782,6 +783,7 @@ const lbStyles = StyleSheet.create({
   },
   gridHeader: { fontSize: FontSize.xs, fontWeight: '700', color: Colors.textSecondary },
   gridParText: { fontSize: 9, color: Colors.textMuted },
+  gridSiText: { fontSize: 9, color: Colors.textMuted, fontStyle: 'italic' },
   gridPlayerName: { fontSize: FontSize.xs, fontWeight: '600', color: Colors.textPrimary },
   gridScore: { fontSize: FontSize.sm, fontWeight: '600' },
   gridTotalScore: { fontSize: FontSize.sm, fontWeight: '700', color: Colors.textPrimary },
