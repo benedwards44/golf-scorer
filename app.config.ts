@@ -8,12 +8,21 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   orientation: 'portrait',
   icon: './assets/icon.png',
   userInterfaceStyle: 'light',
+  newArchEnabled: true,
+  extra: {
+    eas: {
+      projectId: "7ac74aa1-e770-424e-8f79-072447fb4672"
+    }
+  },
   splash: {
     backgroundColor: '#1a5c38',
   },
   ios: {
     supportsTablet: false,
     bundleIdentifier: 'com.golfscorer.app',
+    infoPlist: {
+      ITSAppUsesNonExemptEncryption: false
+    }
   },
   android: {
     adaptiveIcon: {
