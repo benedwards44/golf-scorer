@@ -604,7 +604,11 @@ function LeaderboardView({
           <View>
             {/* Header row */}
             <View style={lbStyles.gridRow}>
-              <View style={lbStyles.gridLabelCell} />
+              <View style={lbStyles.gridLeftHeaderCell}>
+                <Text style={lbStyles.gridHeaderHoleText}>HOLE</Text>
+                <Text style={lbStyles.gridHeaderParText}>PAR</Text>
+                <Text style={lbStyles.gridHeaderParText}>INDEX</Text>
+              </View>
               {course.holes.map((h: any) => (
                 <Pressable
                   key={h.hole}
@@ -612,8 +616,8 @@ function LeaderboardView({
                   onPress={() => { onBack(); onHolePress(h.hole - 1); }}
                 >
                   <Text style={lbStyles.gridHeader}>{h.hole}</Text>
-                  <Text style={lbStyles.gridParText}>p{h.par}</Text>
-                  <Text style={lbStyles.gridSiText}>s{h.strokeIndex}</Text>
+                  <Text style={lbStyles.gridParText}>{h.par}</Text>
+                  <Text style={lbStyles.gridSiText}>{h.strokeIndex}</Text>
                 </Pressable>
               ))}
               <View style={lbStyles.gridTotalCell}>
@@ -744,12 +748,15 @@ const lbStyles = StyleSheet.create({
   // Grid
   gridRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: Colors.border },
   gridNameRow: {
-    paddingHorizontal: Spacing.sm,
     paddingTop: Spacing.sm,
     paddingBottom: 2,
     backgroundColor: Colors.offWhite,
   },
-  gridPlayerName: { fontSize: FontSize.xs, fontWeight: '700', color: Colors.textPrimary },
+  gridPlayerName: { 
+    fontSize: FontSize.sm, 
+    fontWeight: '800', 
+    color: Colors.textPrimary
+  },
   playerGroup: {
     borderTopWidth: 2,
     borderTopColor: Colors.borderDark,
@@ -781,12 +788,19 @@ const lbStyles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: Colors.offWhite,
   },
+  gridLeftHeaderCell: {
+    justifyContent: 'flex-end',
+    width: 38,
+    paddingHorizontal: 4,
+    marginBottom: Spacing.xs
+  },
   gridHeader: { fontSize: FontSize.xs, fontWeight: '700', color: Colors.textSecondary },
   gridParText: { fontSize: 9, color: Colors.textMuted },
-  gridSiText: { fontSize: 9, color: Colors.textMuted, fontStyle: 'italic' },
-  gridPlayerName: { fontSize: FontSize.xs, fontWeight: '600', color: Colors.textPrimary },
+  gridSiText: { fontSize: 9, color: Colors.textMuted },
   gridScore: { fontSize: FontSize.sm, fontWeight: '600' },
   gridTotalScore: { fontSize: FontSize.sm, fontWeight: '700', color: Colors.textPrimary },
+  gridHeaderParText: { fontSize: 9, color: Colors.textMuted },
+  gridHeaderHoleText: { fontSize: 9, fontWeight: '800', color: Colors.textSecondary },
 });
 
 const styles = StyleSheet.create({
