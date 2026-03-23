@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import {
   Alert,
   Dimensions,
@@ -9,7 +9,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Game, PlayerRoundSummary } from '../utils/types';
 import { buildGameSummaries, getScoreColor } from '../utils/calculations';
@@ -27,19 +27,22 @@ export default function ScoringScreen() {
   const [view, setView] = useState<'scoring' | 'leaderboard'>('scoring');
   const flatListRef = useRef<FlatList>(null);
 
-  useEffect(() => {
-    if (gameId) loadGame(gameId).then((g) => {
-      if (g) {
-        setGame(g);
-        setSummaries(buildGameSummaries(g));
-        // Jump to first unplayed hole
-        const firstUnplayed = g.rounds[0]?.scores.findIndex((s) => s.strokes === null);
-        if (firstUnplayed !== undefined && firstUnplayed >= 0) {
-          setCurrentHole(firstUnplayed);
+  useFocusEffect(
+    useCallback(() => {
+      if (gameId) loadGame(gameId).then((g) => {
+        if (g) {
+          setGame(g);
+          setSummaries(buildGameSummaries(g));
+          // Jump to first unplayed hole (only on first load)
+          setCurrentHole((prev) => {
+            if (prev > 0) return prev;
+            const firstUnplayed = g.rounds[0]?.scores.findIndex((s) => s.strokes === null);
+            return firstUnplayed !== undefined && firstUnplayed >= 0 ? firstUnplayed : 0;
+          });
         }
-      }
-    });
-  }, [gameId]);
+      });
+    }, [gameId])
+  );
 
   async function updateScore(playerId: string, holeIdx: number, strokes: number) {
     if (!game) return;
@@ -104,16 +107,24 @@ export default function ScoringScreen() {
         options={{
           title: game.course.name,
           headerRight: () => (
-            <Pressable
-              onPress={() => setView(view === 'scoring' ? 'leaderboard' : 'scoring')}
-              style={{ paddingHorizontal: 4 }}
-            >
-              <Ionicons
-                name={view === 'scoring' ? 'podium-outline' : 'golf-outline'}
-                size={24}
-                color={Colors.white}
-              />
-            </Pressable>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <Pressable
+                onPress={() => router.push({ pathname: '/hole-setup', params: { gameId: game.id } })}
+                style={{ paddingHorizontal: 4 }}
+              >
+                <Ionicons name="options-outline" size={24} color={Colors.white} />
+              </Pressable>
+              <Pressable
+                onPress={() => setView(view === 'scoring' ? 'leaderboard' : 'scoring')}
+                style={{ paddingHorizontal: 4 }}
+              >
+                <Ionicons
+                  name={view === 'scoring' ? 'podium-outline' : 'golf-outline'}
+                  size={24}
+                  color={Colors.white}
+                />
+              </Pressable>
+            </View>
           ),
         }}
       />
