@@ -17,6 +17,10 @@
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        "companyName": "Cubs Limited"
+      }
+    }
   }
 }

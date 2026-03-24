@@ -19,7 +19,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     }
   },
   ios: {
-    supportsTablet: true,
+    supportsTablet: false,
     bundleIdentifier: "com.cubs.golfscorer",
     infoPlist: {
       ITSAppUsesNonExemptEncryption: false
