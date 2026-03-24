@@ -150,6 +150,7 @@ export default function ScoringScreen() {
     );
   }
 
+  const wolfEnabled = game.wolfEnabled !== false;
   const hole = game.course.holes[currentHole];
   const holeHandicapInfo = summaries.map((s) => ({
     player: s.player,
@@ -285,15 +286,19 @@ export default function ScoringScreen() {
                           {summary.holesPlayed > 0 ? summary.totalStableford : '—'}
                         </Text>
                       </View>
-                      <View style={styles.totalDivider} />
-                      <View style={styles.totalItem}>
-                        <Text style={[styles.totalLabel, { color: Colors.wolf }]}>
-                          🐺 Wolf
-                        </Text>
-                        <Text style={[styles.totalValue, { color: Colors.wolf }]}>
-                          {summary.totalWolfPoints > 0 ? summary.totalWolfPoints : '—'}
-                        </Text>
-                      </View>
+                      {wolfEnabled && (
+                        <>
+                          <View style={styles.totalDivider} />
+                          <View style={styles.totalItem}>
+                            <Text style={[styles.totalLabel, { color: Colors.wolf }]}>
+                              🐺 Wolf
+                            </Text>
+                            <Text style={[styles.totalValue, { color: Colors.wolf }]}>
+                              {summary.totalWolfPoints > 0 ? summary.totalWolfPoints : '—'}
+                            </Text>
+                          </View>
+                        </>
+                      )}
                     </View>
                   </View>
 
@@ -380,47 +385,49 @@ export default function ScoringScreen() {
                   </View>
 
                   {/* Wolf points row */}
-                  <View style={styles.wolfRow}>
-                    <Text style={styles.wolfLabel}>🐺 Wolf Points</Text>
-                    <View style={styles.wolfStepper}>
-                      <Pressable
-                        style={styles.wolfStepBtn}
-                        onPress={() => {
-                          const cur = holeData.wolfPoints ?? 0;
-                          if (cur > 0) updateWolfPoints(summary.player.id, currentHole, cur - 1);
-                          else updateWolfPoints(summary.player.id, currentHole, null);
-                        }}
-                      >
-                        <Text style={styles.wolfStepText}>−</Text>
-                      </Pressable>
-                      <TextInput
-                        style={styles.wolfInput}
-                        keyboardType="number-pad"
-                        value={holeData.wolfPoints !== null ? String(holeData.wolfPoints) : ''}
-                        placeholder="—"
-                        placeholderTextColor={Colors.textMuted}
-                        onChangeText={(v) => {
-                          if (v === '' || v === '-') {
-                            updateWolfPoints(summary.player.id, currentHole, null);
-                          } else {
-                            const n = parseInt(v);
-                            if (!isNaN(n) && n >= 0) updateWolfPoints(summary.player.id, currentHole, n);
-                          }
-                        }}
-                        selectTextOnFocus
-                        returnKeyType="done"
-                      />
-                      <Pressable
-                        style={styles.wolfStepBtn}
-                        onPress={() => {
-                          const cur = holeData.wolfPoints ?? 0;
-                          updateWolfPoints(summary.player.id, currentHole, cur + 1);
-                        }}
-                      >
-                        <Text style={styles.wolfStepText}>+</Text>
-                      </Pressable>
+                  {wolfEnabled && (
+                    <View style={styles.wolfRow}>
+                      <Text style={styles.wolfLabel}>🐺 Wolf Points</Text>
+                      <View style={styles.wolfStepper}>
+                        <Pressable
+                          style={styles.wolfStepBtn}
+                          onPress={() => {
+                            const cur = holeData.wolfPoints ?? 0;
+                            if (cur > 0) updateWolfPoints(summary.player.id, currentHole, cur - 1);
+                            else updateWolfPoints(summary.player.id, currentHole, null);
+                          }}
+                        >
+                          <Text style={styles.wolfStepText}>−</Text>
+                        </Pressable>
+                        <TextInput
+                          style={styles.wolfInput}
+                          keyboardType="number-pad"
+                          value={holeData.wolfPoints !== null ? String(holeData.wolfPoints) : ''}
+                          placeholder="—"
+                          placeholderTextColor={Colors.textMuted}
+                          onChangeText={(v) => {
+                            if (v === '' || v === '-') {
+                              updateWolfPoints(summary.player.id, currentHole, null);
+                            } else {
+                              const n = parseInt(v);
+                              if (!isNaN(n) && n >= 0) updateWolfPoints(summary.player.id, currentHole, n);
+                            }
+                          }}
+                          selectTextOnFocus
+                          returnKeyType="done"
+                        />
+                        <Pressable
+                          style={styles.wolfStepBtn}
+                          onPress={() => {
+                            const cur = holeData.wolfPoints ?? 0;
+                            updateWolfPoints(summary.player.id, currentHole, cur + 1);
+                          }}
+                        >
+                          <Text style={styles.wolfStepText}>+</Text>
+                        </Pressable>
+                      </View>
                     </View>
-                  </View>
+                  )}
                 </View>
               );
             })}
@@ -463,6 +470,7 @@ export default function ScoringScreen() {
         <LeaderboardView
           summaries={summaries}
           course={game.course}
+          wolfEnabled={wolfEnabled}
           onBack={() => setView('scoring')}
           onHolePress={(holeIdx) => { setCurrentHole(holeIdx); setView('scoring'); }}
         />
@@ -541,11 +549,13 @@ export default function ScoringScreen() {
 function LeaderboardView({
   summaries,
   course,
+  wolfEnabled,
   onBack,
   onHolePress,
 }: {
   summaries: PlayerRoundSummary[];
   course: any;
+  wolfEnabled: boolean;
   onBack: () => void;
   onHolePress: (holeIdx: number) => void;
 }) {
@@ -584,14 +594,16 @@ function LeaderboardView({
                   {s.holesPlayed > 0 ? s.totalStableford : '—'}
                 </Text>
               </View>
-              <View style={[lbStyles.scoreCol, lbStyles.stablefordCol]}>
-                <Text style={[lbStyles.scoreLabel, { color: Colors.wolf }]}>
-                  🐺 Wolf
-                </Text>
-                <Text style={[lbStyles.scoreVal, { color: Colors.wolf }]}>
-                  {s.totalWolfPoints > 0 ? s.totalWolfPoints : '—'}
-                </Text>
-              </View>
+              {wolfEnabled && (
+                <View style={[lbStyles.scoreCol, lbStyles.stablefordCol]}>
+                  <Text style={[lbStyles.scoreLabel, { color: Colors.wolf }]}>
+                    🐺 Wolf
+                  </Text>
+                  <Text style={[lbStyles.scoreVal, { color: Colors.wolf }]}>
+                    {s.totalWolfPoints > 0 ? s.totalWolfPoints : '—'}
+                  </Text>
+                </View>
+              )}
             </View>
           </View>
         ))}
@@ -609,7 +621,7 @@ function LeaderboardView({
                 <Text style={lbStyles.gridHeaderParText}>PAR</Text>
                 <Text style={lbStyles.gridHeaderParText}>INDEX</Text>
               </View>
-              {course.holes.map((h: any) => (
+              {course.holes.slice(0, 9).map((h: any) => (
                 <Pressable
                   key={h.hole}
                   style={lbStyles.gridHoleCell}
@@ -620,79 +632,188 @@ function LeaderboardView({
                   <Text style={lbStyles.gridSiText}>{h.strokeIndex}</Text>
                 </Pressable>
               ))}
-              <View style={lbStyles.gridTotalCell}>
-                <Text style={lbStyles.gridHeader}>Tot</Text>
+              {course.holes.length > 9 && (
+                <View style={[lbStyles.gridTotalCell, { justifyContent: 'flex-start' }]}>
+                  <Text style={lbStyles.gridHeader}>IN</Text>
+                  <Text style={lbStyles.gridParText}>
+                    {course.holes.slice(0, 9).reduce((sum: number, h: any) => sum + h.par, 0)}
+                  </Text>
+                </View>
+              )}
+              {course.holes.slice(9).map((h: any) => (
+                <Pressable
+                  key={h.hole}
+                  style={lbStyles.gridHoleCell}
+                  onPress={() => { onBack(); onHolePress(h.hole - 1); }}
+                >
+                  <Text style={lbStyles.gridHeader}>{h.hole}</Text>
+                  <Text style={lbStyles.gridParText}>{h.par}</Text>
+                  <Text style={lbStyles.gridSiText}>{h.strokeIndex}</Text>
+                </Pressable>
+              ))}
+              {course.holes.length > 9 && (
+                <View style={[lbStyles.gridTotalCell, { justifyContent: 'flex-start' }]}>
+                  <Text style={lbStyles.gridHeader}>OUT</Text>
+                  <Text style={lbStyles.gridParText}>
+                    {course.holes.slice(9).reduce((sum: number, h: any) => sum + h.par, 0)}
+                  </Text>
+                </View>
+              )}
+              <View style={[lbStyles.gridTotalCell, { justifyContent: 'flex-start' }]}>
+                <Text style={lbStyles.gridHeader}>TOTAL</Text>
               </View>
             </View>
 
             {/* One group of 3 rows per player */}
-            {summaries.map((s, playerIdx) => (
-              <View key={s.player.id} style={playerIdx > 0 ? lbStyles.playerGroup : undefined}>
-                {/* Player name spanning row */}
-                <View style={lbStyles.gridNameRow}>
-                  <Text style={lbStyles.gridPlayerName} numberOfLines={1}>
-                    {s.player.name}
-                  </Text>
-                </View>
+            {summaries.map((s, playerIdx) => {
+              const has18 = s.holes.length > 9;
+              const front9 = s.holes.slice(0, 9);
+              const back9 = s.holes.slice(9);
 
-                {/* Strokes row */}
-                <View style={lbStyles.gridRow}>
-                  <View style={lbStyles.gridLabelCell}>
-                    <Text style={lbStyles.gridRowLabel}>Stk</Text>
-                  </View>
-                  {s.holes.map((h) => (
-                    <View key={h.hole} style={lbStyles.gridHoleCell}>
-                      <Text style={[lbStyles.gridScore, { color: getScoreColor(h.strokes, h.par) }]}>
-                        {h.strokes ?? '·'}
-                      </Text>
-                    </View>
-                  ))}
-                  <View style={lbStyles.gridTotalCell}>
-                    <Text style={lbStyles.gridTotalScore}>
-                      {s.holesPlayed > 0 ? s.totalStrokes : '—'}
+              const front9Strokes = front9.reduce((sum, h) => sum + (h.strokes ?? 0), 0);
+              const back9Strokes = back9.reduce((sum, h) => sum + (h.strokes ?? 0), 0);
+              const front9Played = front9.some(h => h.strokes !== null);
+              const back9Played = back9.some(h => h.strokes !== null);
+
+              const front9Stableford = front9.reduce((sum, h) => sum + (h.stablefordPoints ?? 0), 0);
+              const back9Stableford = back9.reduce((sum, h) => sum + (h.stablefordPoints ?? 0), 0);
+
+              const front9Wolf = front9.reduce((sum, h) => sum + (h.wolfPoints ?? 0), 0);
+              const back9Wolf = back9.reduce((sum, h) => sum + (h.wolfPoints ?? 0), 0);
+
+              return (
+                <View key={s.player.id} style={playerIdx > 0 ? lbStyles.playerGroup : undefined}>
+                  {/* Player name spanning row */}
+                  <View style={lbStyles.gridNameRow}>
+                    <Text style={lbStyles.gridPlayerName} numberOfLines={1}>
+                      {s.player.name}
                     </Text>
                   </View>
-                </View>
 
-                {/* Stableford row */}
-                <View style={lbStyles.gridRow}>
-                  <View style={lbStyles.gridLabelCell}>
-                    <Text style={[lbStyles.gridRowLabel, { color: Colors.stableford }]}>Stb</Text>
-                  </View>
-                  {s.holes.map((h) => (
-                    <View key={h.hole} style={lbStyles.gridHoleCell}>
-                      <Text style={[lbStyles.gridScore, { color: Colors.stableford }]}>
-                        {h.stablefordPoints !== null ? h.stablefordPoints : '·'}
+                  {/* Strokes row */}
+                  <View style={lbStyles.gridRow}>
+                    <View style={lbStyles.gridLabelCell}>
+                      <Text style={lbStyles.gridRowLabel}>Stk</Text>
+                    </View>
+                    {front9.map((h) => (
+                      <View key={h.hole} style={lbStyles.gridHoleCell}>
+                        <Text style={[lbStyles.gridScore, { color: getScoreColor(h.strokes, h.par) }]}>
+                          {h.strokes ?? '·'}
+                        </Text>
+                      </View>
+                    ))}
+                    {has18 && (
+                      <View style={lbStyles.gridTotalCell}>
+                        <Text style={lbStyles.gridTotalScore}>
+                          {front9Played ? front9Strokes : '—'}
+                        </Text>
+                      </View>
+                    )}
+                    {back9.map((h) => (
+                      <View key={h.hole} style={lbStyles.gridHoleCell}>
+                        <Text style={[lbStyles.gridScore, { color: getScoreColor(h.strokes, h.par) }]}>
+                          {h.strokes ?? '·'}
+                        </Text>
+                      </View>
+                    ))}
+                    {has18 && (
+                      <View style={lbStyles.gridTotalCell}>
+                        <Text style={lbStyles.gridTotalScore}>
+                          {back9Played ? back9Strokes : '—'}
+                        </Text>
+                      </View>
+                    )}
+                    <View style={lbStyles.gridTotalCell}>
+                      <Text style={lbStyles.gridTotalScore}>
+                        {s.holesPlayed > 0 ? s.totalStrokes : '—'}
                       </Text>
                     </View>
-                  ))}
-                  <View style={lbStyles.gridTotalCell}>
-                    <Text style={[lbStyles.gridTotalScore, { color: Colors.stableford }]}>
-                      {s.holesPlayed > 0 ? s.totalStableford : '—'}
-                    </Text>
                   </View>
-                </View>
 
-                {/* Wolf row */}
-                <View style={lbStyles.gridRow}>
-                  <View style={lbStyles.gridLabelCell}>
-                    <Text style={[lbStyles.gridRowLabel, { color: Colors.wolf }]}>Wlf</Text>
-                  </View>
-                  {s.holes.map((h) => (
-                    <View key={h.hole} style={lbStyles.gridHoleCell}>
-                      <Text style={[lbStyles.gridScore, { color: Colors.wolf }]}>
-                        {h.wolfPoints !== null ? h.wolfPoints : '·'}
+                  {/* Stableford row */}
+                  <View style={lbStyles.gridRow}>
+                    <View style={lbStyles.gridLabelCell}>
+                      <Text style={[lbStyles.gridRowLabel, { color: Colors.stableford }]}>Stb</Text>
+                    </View>
+                    {front9.map((h) => (
+                      <View key={h.hole} style={lbStyles.gridHoleCell}>
+                        <Text style={[lbStyles.gridScore, { color: Colors.stableford }]}>
+                          {h.stablefordPoints !== null ? h.stablefordPoints : '·'}
+                        </Text>
+                      </View>
+                    ))}
+                    {has18 && (
+                      <View style={lbStyles.gridTotalCell}>
+                        <Text style={[lbStyles.gridTotalScore, { color: Colors.stableford }]}>
+                          {front9Played ? front9Stableford : '—'}
+                        </Text>
+                      </View>
+                    )}
+                    {back9.map((h) => (
+                      <View key={h.hole} style={lbStyles.gridHoleCell}>
+                        <Text style={[lbStyles.gridScore, { color: Colors.stableford }]}>
+                          {h.stablefordPoints !== null ? h.stablefordPoints : '·'}
+                        </Text>
+                      </View>
+                    ))}
+                    {has18 && (
+                      <View style={lbStyles.gridTotalCell}>
+                        <Text style={[lbStyles.gridTotalScore, { color: Colors.stableford }]}>
+                          {back9Played ? back9Stableford : '—'}
+                        </Text>
+                      </View>
+                    )}
+                    <View style={lbStyles.gridTotalCell}>
+                      <Text style={[lbStyles.gridTotalScore, { color: Colors.stableford }]}>
+                        {s.holesPlayed > 0 ? s.totalStableford : '—'}
                       </Text>
                     </View>
-                  ))}
-                  <View style={lbStyles.gridTotalCell}>
-                    <Text style={[lbStyles.gridTotalScore, { color: Colors.wolf }]}>
-                      {s.totalWolfPoints > 0 ? s.totalWolfPoints : '—'}
-                    </Text>
                   </View>
+
+                  {/* Wolf row */}
+                  {wolfEnabled && (
+                    <View style={lbStyles.gridRow}>
+                      <View style={lbStyles.gridLabelCell}>
+                        <Text style={[lbStyles.gridRowLabel, { color: Colors.wolf }]}>Wlf</Text>
+                      </View>
+                      {front9.map((h) => (
+                        <View key={h.hole} style={lbStyles.gridHoleCell}>
+                          <Text style={[lbStyles.gridScore, { color: Colors.wolf }]}>
+                            {h.wolfPoints !== null ? h.wolfPoints : '·'}
+                          </Text>
+                        </View>
+                      ))}
+                      {has18 && (
+                        <View style={lbStyles.gridTotalCell}>
+                          <Text style={[lbStyles.gridTotalScore, { color: Colors.wolf }]}>
+                            {front9Wolf > 0 ? front9Wolf : '—'}
+                          </Text>
+                        </View>
+                      )}
+                      {back9.map((h) => (
+                        <View key={h.hole} style={lbStyles.gridHoleCell}>
+                          <Text style={[lbStyles.gridScore, { color: Colors.wolf }]}>
+                            {h.wolfPoints !== null ? h.wolfPoints : '·'}
+                          </Text>
+                        </View>
+                      ))}
+                      {has18 && (
+                        <View style={lbStyles.gridTotalCell}>
+                          <Text style={[lbStyles.gridTotalScore, { color: Colors.wolf }]}>
+                            {back9Wolf > 0 ? back9Wolf : '—'}
+                          </Text>
+                        </View>
+                      )}
+                      <View style={lbStyles.gridTotalCell}>
+                        <Text style={[lbStyles.gridTotalScore, { color: Colors.wolf }]}>
+                          {s.totalWolfPoints > 0 ? s.totalWolfPoints : '—'}
+                        </Text>
+                      </View>
+                    </View>
+                  )}
                 </View>
-              </View>
-            ))}
+              );
+            })}
           </View>
         </ScrollView>
       </ScrollView>

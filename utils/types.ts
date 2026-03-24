@@ -37,6 +37,7 @@ export interface Game {
   players: Player[];
   rounds: PlayerRound[];
   completed: boolean;
+  wolfEnabled: boolean;
 }
 
 // Derived / calculated types

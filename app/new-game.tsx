@@ -6,6 +6,7 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   View,
@@ -33,6 +34,9 @@ export default function NewGameScreen() {
     { name: '', handicap: '0' },
     { name: '', handicap: '0' },
   ]);
+
+  // Game options
+  const [wolfEnabled, setWolfEnabled] = useState(true);
 
   function addPlayer() {
     if (players.length >= 12) {
@@ -121,6 +125,7 @@ export default function NewGameScreen() {
         scores: Array.from({ length: 18 }, () => ({ strokes: null, wolfPoints: null })),
       })),
       completed: false,
+      wolfEnabled,
     };
 
     await saveGame(game);
@@ -212,15 +217,13 @@ export default function NewGameScreen() {
           ) : (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Players</Text>
-              <Text style={styles.sectionSubtitle}>Up to 12 players · Handicap index</Text>
-
               {players.map((p, idx) => (
                 <View key={idx} style={styles.playerRow}>
-                  <View style={styles.playerNum}>
+                  <View style={[styles.playerNum, { marginTop: 14 }]}>
                     <Text style={styles.playerNumText}>{idx + 1}</Text>
                   </View>
                   <TextInput
-                    style={[styles.input, { flex: 1 }]}
+                    style={[styles.input, { flex: 1, marginTop: 14 }]}
                     placeholder={`Player ${idx + 1} name`}
                     value={p.name}
                     onChangeText={(v) => updatePlayer(idx, 'name', v)}
@@ -255,6 +258,19 @@ export default function NewGameScreen() {
                   <Text style={styles.addPlayerText}>+ Add Player</Text>
                 </Pressable>
               )}
+
+              <View style={styles.toggleRow}>
+                <View>
+                  <Text style={styles.toggleLabel}>🐺 Wolf Scoring</Text>
+                  <Text style={styles.toggleSub}>Track wolf points per hole</Text>
+                </View>
+                <Switch
+                  value={wolfEnabled}
+                  onValueChange={setWolfEnabled}
+                  trackColor={{ false: Colors.border, true: Colors.wolf }}
+                  thumbColor={Colors.white}
+                />
+              </View>
 
               <View style={styles.actionRow}>
                 <Pressable style={styles.secondaryBtn} onPress={() => setStep('course')}>
@@ -459,4 +475,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   secondaryBtnText: { color: Colors.green, fontSize: FontSize.base, fontWeight: '600' },
+  toggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: Spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+    marginTop: Spacing.sm,
+    marginBottom: Spacing.md,
+  },
+  toggleLabel: { fontSize: FontSize.base, fontWeight: '600', color: Colors.textPrimary },
+  toggleSub: { fontSize: FontSize.xs, color: Colors.textSecondary, marginTop: 2 },
 });
