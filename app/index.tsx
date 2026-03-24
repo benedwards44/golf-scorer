@@ -55,7 +55,7 @@ export default function HomeScreen() {
     <>
       <Stack.Screen
         options={{
-          title: '⛳ Golf Scorer',
+          title: '⛳ Golf Scorer X',
           headerRight: () => (
             <Pressable
               onPress={() => router.push('/new-game')}

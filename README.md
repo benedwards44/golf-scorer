@@ -1,4 +1,4 @@
-# ⛳ Golf Scorer
+# ⛳ Golf Scorer X
 
 A React Native / Expo mobile app for scoring golf games with up to **12 players**, supporting both **Strokes** and **Stableford** scoring systems.
 

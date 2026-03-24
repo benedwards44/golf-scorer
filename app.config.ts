@@ -2,7 +2,7 @@ import { ExpoConfig, ConfigContext } from "expo/config";
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
-  name: "Golf Scorer",
+  name: "Golf Scorer X",
   slug: "golf-scorer",
   version: "1.0.0",
   orientation: "portrait",
